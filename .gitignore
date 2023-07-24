@@ -1,4 +1,4 @@
 # 3rd party repos to ignore
 VAL/
-fast-downward/
+downward/
 benchmarks/
