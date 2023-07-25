@@ -2,18 +2,20 @@
 
 import os, sys, subprocess
 import functools as ft
-from typing import Any, Callable, TypeAlias, Union
+from typing import Any, Callable, Optional, TypeAlias, Union
 from termcolor import cprint
 
 from typing import List
 from subprocess import CompletedProcess
 from os import PathLike
-StrOrBytesPath: TypeAlias = type[str] | type[bytes] | type[PathLike[str]] | type[PathLike[bytes]]
-FileDescriptorOrPath: TypeAlias = type[int] | type[str] | type[bytes] | type[PathLike[str]] | type[PathLike[bytes]]
+
+Predicate : TypeAlias = Callable[[Any],bool]
+StrOrBytesPath : TypeAlias = type[str] | type[bytes] | type[PathLike[str]] | type[PathLike[bytes]]
+FileDescriptorOrPath : TypeAlias = type[int] | type[str] | type[bytes] | type[PathLike[str]] | type[PathLike[bytes]]
 
 ########################################################################################################################
 
-def downwardlab_home(path=os.getcwd()):
+def downwardlab_home(path:Optional[StrOrBytesPath]=os.getcwd()):
     '''Search CWD and direct ancestors for directory that has 'downward' and VAL subdirectories.
     
     Directory Name              Description                     Additional Check
@@ -38,7 +40,9 @@ def downwardlab_home(path=os.getcwd()):
 
 
 
-def get_nearest_ancestor(path=None, condition=None):
+def get_nearest_ancestor(path:Optional[StrOrBytesPath]=None, 
+                         condition:Optional[Predicate]=None
+                         ) -> StrOrBytesPath | None:
     '''Find path of first ancestor for which condition is satisfied.'''
     path = os.path.abspath(path) if path else os.getcwd()
     # if no condition specified, return nearest ancestor unconditionally
@@ -63,7 +67,7 @@ def get_nearest_ancestor(path=None, condition=None):
     return ancestor
 
 
-def chmod_plus_x(path):
+def chmod_plus_x(path:StrOrBytesPath):
     # Reference: https://stackoverflow.com/questions/12791997/how-do-you-do-a-simple-chmod-x-from-within-python/55591471#55591471
     import os, stat
     def get_umask():
@@ -75,7 +79,7 @@ def chmod_plus_x(path):
     os.chmod(path, mode | ( exec_mask & ~get_umask() ))
 
 
-def add_abort_condition(rval_condition:Callable[[Any],bool], error:Union[bool,type]=False, verbose:bool=False, errmsg='default'):
+def add_abort_condition(rval_condition:Predicate, error:Union[bool,type]=False, verbose:bool=False, errmsg:str='default'):
     '''Decorator that aborts process if the decorated function returns a value that satisfies rval_condition.
 
     TODO: add logging
@@ -115,8 +119,8 @@ class VirtualenvwrapperCLI:
     
     @classmethod
     def mkvirtualenv(cls, env_name:str,
-                     projectpath:Union[StrOrBytesPath,None]=None, 
-                     install:Union[str,List[str],FileDescriptorOrPath]=None
+                     projectpath:Optional[StrOrBytesPath]=None, 
+                     install:Optional[Union[str,List[str],FileDescriptorOrPath]]=None
                     ) -> CompletedProcess[bytes]:
         
         options = cls._OptionsHandler.mkvirtualenv_options(projectpath, install)
@@ -156,8 +160,8 @@ class VirtualenvwrapperCLI:
         
         @classmethod
         def mkvirtualenv_options(cls, 
-                                 projectpath:Union[StrOrBytesPath,None]=None, 
-                                 install:Union[str,List[str],FileDescriptorOrPath]=None
+                                 projectpath:Optional[StrOrBytesPath]=None, 
+                                 install:Optional[Union[str,List[str],FileDescriptorOrPath]]=None
                                 ) -> str:
             options = {}
             if projectpath is not None:

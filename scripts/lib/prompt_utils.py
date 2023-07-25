@@ -1,31 +1,31 @@
-from abc import abstractmethod
-from typing import Any, Callable, Collection, Dict, NamedTuple, Union
+from typing import Any, Collection, Optional, TypeAlias
 from dataclasses import dataclass
 from prompt_toolkit.shortcuts import prompt
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText
-from prompt_toolkit.styles import Style, DummyStyle, Attrs
 
-
+# Type Aliases
+Style : TypeAlias = type[dict] | type["PyPromptTextAttrs"]
+Text  : TypeAlias = type[str]  | type["PyPromptFormattedText"] | type[FormattedText]
 
 ########################################################################################################################
-'''Run code under 'if __name__=="__main__":' when run as script.'''
+
+'''Toggle whether code under 'if __name__=="__main__":' should execute when run as script.'''
 RUNNABLE = False
 
-
-
+########################################################################################################################
 
 @dataclass
 class PyPromptTextAttrs:
-    color     : Union[str,  None] = None
-    bgcolor   : Union[str,  None] = None
-    bold      : Union[bool, None] = None
-    italic    : Union[bool, None] = None
-    underline : Union[bool, None] = None
-    strike    : Union[bool, None] = None
-    blink     : Union[bool, None] = None
-    reverse   : Union[bool, None] = None
-    hidden    : Union[bool, None] = None
+    color     : Optional[str]  = None
+    bgcolor   : Optional[str]  = None
+    bold      : Optional[bool] = None
+    italic    : Optional[bool] = None
+    underline : Optional[bool] = None
+    strike    : Optional[bool] = None
+    blink     : Optional[bool] = None
+    reverse   : Optional[bool] = None
+    hidden    : Optional[bool] = None
     
     def to_dict(self) -> dict :
         return self.__dict__
@@ -60,7 +60,7 @@ class PyPromptTextAttrs:
 
 class PyPromptFormattedText():
     
-    def __init__(self, text:str, style:Union[PyPromptTextAttrs, Dict, None]=None, **style_kwargs):
+    def __init__(self, text:str, style:Optional[Style]=None, **style_kwargs:dict[str,Any]) -> None:
         self.text = text
         # Raise error if style is overdefined
         if style is not None and not style_kwargs=={}:
@@ -68,41 +68,41 @@ class PyPromptFormattedText():
         
         if isinstance(style, PyPromptTextAttrs):
             self.style = style
-        elif isinstance(style, Dict):
+        elif isinstance(style, dict):
             self.style = PyPromptTextAttrs.from_dict(style)
         elif style is None:
             self.style = PyPromptTextAttrs(**style_kwargs)
         else:
-            raise TypeError("Inappropriate argument type for parameter 'style' (expected one of 'None', 'Dict', or 'PyPromptTextAttrs')")
+            raise TypeError("Inappropriate argument type for parameter 'style' (expected one of 'None', 'dict', or 'PyPromptTextAttrs')")
 
     class style_property(property):
         @staticmethod
-        def __fget_textattr(attr:str):
+        def __fget_textattr(attr:str) -> Any:
             return lambda self: getattr(self.style, attr)
         @staticmethod
-        def __fset_textattr(attr:str):
+        def __fset_textattr(attr:str) -> None:
             return lambda self,val: setattr(self.style, attr, val)
-        def __init__(self,attr:str):
+        def __init__(self,attr:str) -> None:
             super().__init__(self.__fget_textattr(attr), self.__fset_textattr(attr))
 
     text: str
     style: PyPromptTextAttrs = None
-    color     : Union[str,  None] = style_property("color")
-    bgcolor   : Union[str,  None] = style_property("bgcolor")
-    bold      : Union[bool, None] = style_property("bold")
-    italic    : Union[bool, None] = style_property("italic")
-    underline : Union[bool, None] = style_property("underline")
-    strike    : Union[bool, None] = style_property("strike")
-    blink     : Union[bool, None] = style_property("blink")
-    reverse   : Union[bool, None] = style_property("reverse")
-    hidden    : Union[bool, None] = style_property("hidden")
+    color     : Optional[str] = style_property("color")
+    bgcolor   : Optional[str] = style_property("bgcolor")
+    bold      : Optional[bool] = style_property("bold")
+    italic    : Optional[bool] = style_property("italic")
+    underline : Optional[bool] = style_property("underline")
+    strike    : Optional[bool] = style_property("strike")
+    blink     : Optional[bool] = style_property("blink")
+    reverse   : Optional[bool] = style_property("reverse")
+    hidden    : Optional[bool] = style_property("hidden")
     style_str : str = property(fget=lambda self: self.style.to_style_str() if self.style is not None else '')
 
     
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return self.__dict__
 
-    def to_formatted_text(self):
+    def to_formatted_text(self) -> FormattedText:
         return FormattedText([(self.style_str, self.text)])
     
     def __str__(self) -> str:
@@ -115,7 +115,7 @@ class PyPromptFormattedText():
     
 
 class Prompt(PyPromptFormattedText):
-    def __init__(self, text:str, style:Union[PyPromptTextAttrs, Dict, None]=None, **style_kwargs):
+    def __init__(self, text:str, style:Optional[Style]=None, **style_kwargs:dict[str,Any]):
         text = text if text.endswith(' ') else text+' '
         super().__init__(text, style, **style_kwargs)
     
@@ -138,29 +138,29 @@ class ConfirmationPrompt():
         def valid(self) -> Collection[str]:
             return set([*self.affirmative, *self.negative])
 
-        def check_element(self, elem, collection):
+        def check_element(self, elem:str, collection:Collection[str]):
             e = elem.lower() if self.case_sensitive is False else elem
             C = [c.lower() for c in collection] if self.case_sensitive is False else collection
             return e in C
-        def is_valid(self, response):
+        def is_valid(self, response:str) -> bool:
             return self.check_element(response, self.valid)
-        def is_affirmative(self, response):
+        def is_affirmative(self, response:str) -> bool:
             return self.check_element(response, self.affirmative)
-        def is_negative(self, response):
+        def is_negative(self, response:str) -> bool:
             return self.check_element(response, self.negative)
 
 
     def __init__(self,  prompt:str, *,
-                        style:Union[PyPromptTextAttrs, Dict, None]=None,
-                        max_attempts:Union[int,None]=None,
-                        invalid_response_warning:Union[str,PyPromptFormattedText]="Invalid response.",
-                        max_attempts_err:Union[str,PyPromptFormattedText]="Maximum attempts exceeded.",
-                        warning_style:Union[PyPromptTextAttrs, Dict, None]=None,
-                        error_style:Union[PyPromptTextAttrs, Dict, None]=None,
+                        style:Optional[Style]=None,
+                        max_attempts:Optional[int]=None,
+                        invalid_response_warning:Text="Invalid response.",
+                        max_attempts_err:Text="Maximum attempts exceeded.",
+                        warning_style:Optional[Style]=None,
+                        error_style:Optional[Style]=None,
                         affirmative:Collection[str]=("y","yes"),
                         negative:Collection[str]=("n","no"), # todo: make these able to accept boolean predicates
-                        case_sensitive=False,
-                        **style_kwargs
+                        case_sensitive:bool=False,
+                        **style_kwargs:dict[str,Any]
                         ):
         
         self.prompt = Prompt(text=prompt, style=style, **style_kwargs)
@@ -173,7 +173,7 @@ class ConfirmationPrompt():
 
 
 
-    def __call__(self) -> Union[bool,None]:
+    def __call__(self) -> Optional[bool]:
         attempt = 1
         while True:
             response = self.prompt()
@@ -204,17 +204,17 @@ class ConfirmationPrompt():
     
         
 def confirmation_prompt(prompt:str, *,
-                        style:Union[PyPromptTextAttrs, Dict, None]=None,
-                        max_attempts:Union[int,None]=None,
-                        invalid_response_warning:Union[str,PyPromptFormattedText]="Invalid response.",
-                        max_attempts_err:Union[str,PyPromptFormattedText]="Maximum attempts exceeded.",
-                        warning_style:Union[PyPromptTextAttrs, Dict, None]=None,
-                        error_style:Union[PyPromptTextAttrs, Dict, None]=None,
+                        style:Optional[Style]=None,
+                        max_attempts:Optional[int]=None,
+                        invalid_response_warning:Text="Invalid response.",
+                        max_attempts_err:Text="Maximum attempts exceeded.",
+                        warning_style:Optional[Style]=None,
+                        error_style:Optional[Style]=None,
                         affirmative:Collection[str]=("y","yes"),
                         negative:Collection[str]=("n","no"), # todo: make these able to accept boolean predicates
                         case_sensitive=False,
                         **style_kwargs
-                        ):
+                        ) -> str:
     '''Create an anonymous confirmation prompt and call it immediately, returning the result.
     '''
     return ConfirmationPrompt(prompt=prompt,
