@@ -2,3 +2,5 @@
 VAL/
 downward/
 benchmarks/
+
+__pycache__/
