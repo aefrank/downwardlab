@@ -1,6 +1,8 @@
-# 3rd party repos to ignore
-VAL/
-downward/
-benchmarks/
+# 3rd party repos to ignore 
+VAL/*
+downward/*
+# except keep README.md files so the directories show up on remote
+!VAL/README.md
+!downward/README.md 
 
 __pycache__/
